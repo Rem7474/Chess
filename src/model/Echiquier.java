@@ -26,10 +26,12 @@ public class Echiquier {
     static public final int H = 7;
 
     private int[][] plateau;
+    private Piece[][] pieces = new Piece[8][8];
 
     public Echiquier() {
         plateau = new int[8][8];
         initialize();
+        initializePieces();
     }
 
     private void initialize() {
@@ -66,6 +68,33 @@ public class Echiquier {
 
         for (int i = 0; i < 8; i++) {
             plateau[1][i] = PAWN_WHITE;
+        }
+    }
+
+    private void initializePieces() {
+        // Pièces blanches
+        pieces[0][0] = new Rook(0, 0, true);
+        pieces[0][1] = new Knight(0, 1, true);
+        pieces[0][2] = new Bishop(0, 2, true);
+        pieces[0][3] = new Queen(0, 3, true);
+        pieces[0][4] = new King(0, 4, true);
+        pieces[0][5] = new Bishop(0, 5, true);
+        pieces[0][6] = new Knight(0, 6, true);
+        pieces[0][7] = new Rook(0, 7, true);
+        for (int i = 0; i < 8; i++) {
+            pieces[1][i] = new Pawn(1, i, true);
+        }
+        // Pièces noires
+        pieces[7][0] = new Rook(7, 0, false);
+        pieces[7][1] = new Knight(7, 1, false);
+        pieces[7][2] = new Bishop(7, 2, false);
+        pieces[7][3] = new Queen(7, 3, false);
+        pieces[7][4] = new King(7, 4, false);
+        pieces[7][5] = new Bishop(7, 5, false);
+        pieces[7][6] = new Knight(7, 6, false);
+        pieces[7][7] = new Rook(7, 7, false);
+        for (int i = 0; i < 8; i++) {
+            pieces[6][i] = new Pawn(6, i, false);
         }
     }
 
@@ -115,5 +144,25 @@ public class Echiquier {
                 caseLibre = nomColonne + (ligne + 2);
             }
         }
+    }
+
+    public Piece getPiece(int row, int col) {
+        return pieces[row][col];
+    }
+
+    public void setPiece(int row, int col, Piece piece) {
+        pieces[row][col] = piece;
+    }
+
+    public String showCase(int row, int col) {
+        Piece p = getPiece(row, col);
+        if (p == null) return " ";
+        if (p instanceof Rook) return p.isWhite() ? "♖" : "♜";
+        if (p instanceof Knight) return p.isWhite() ? "♘" : "♞";
+        if (p instanceof Bishop) return p.isWhite() ? "♗" : "♝";
+        if (p instanceof Queen) return p.isWhite() ? "♕" : "♛";
+        if (p instanceof King) return p.isWhite() ? "♔" : "♚";
+        if (p instanceof Pawn) return p.isWhite() ? "♙" : "♟";
+        return "?";
     }
 }

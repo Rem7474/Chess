@@ -36,4 +36,19 @@ public abstract class Piece {
     public void setCol(int col) {
         this.col = col;
     }
+
+    public boolean isMoveValid(int toRow, int toCol, Echiquier echiquier) {
+        int[][] board = new int[8][8];
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                Piece p = echiquier.getPiece(i, j);
+                if (p == null) board[i][j] = 0;
+                else board[i][j] = p.isWhite() ? 1 : -1;
+            }
+        }
+        for (int[] move : this.calculatePossibleMoves(board)) {
+            if (move[0] == toRow && move[1] == toCol) return true;
+        }
+        return false;
+    }
 }
