@@ -69,17 +69,24 @@ public class AffichageJavaFX implements Affichage {
         public static Echiquier echiquier;
         private Stage primaryStage;
         private Label turnLabel;
+        private Label chronoLabel;
         private Label endGameLabel;
         private GridPane gridPane;
         private boolean gameEnded = false;
+        private long chronoStart = 0;
+        private javafx.animation.Timeline chronoTimeline;
+        private Button goButton;
+        private Button demoButton;
+        private boolean gameStarted = false;
+        private boolean chronoStarted = false;
 
         @Override
         public void start(Stage primaryStage) {
             this.primaryStage = primaryStage;
             gridPane = new GridPane();
             double cellSize = 60;
-            gridPane.setAlignment(Pos.CENTER); // Correction : centre le contenu du GridPane
-            gridPane.setPrefSize(8 * cellSize, 8 * cellSize); // Correction : taille fixe
+            gridPane.setAlignment(Pos.CENTER);
+            gridPane.setPrefSize(8 * cellSize, 8 * cellSize);
 
             afficherPlateau(cellSize);
 
@@ -91,6 +98,11 @@ public class AffichageJavaFX implements Affichage {
                 "-fx-padding: 8 20 8 20;" +
                 "-fx-background-radius: 8;" +
                 "-fx-background-color: #e0e7ef;"
+            );
+
+            chronoLabel = new Label("Chrono : 00:00");
+            chronoLabel.setStyle(
+                "-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #1976d2; -fx-padding: 8 20 8 20;"
             );
 
             endGameLabel = new Label("");
@@ -106,7 +118,6 @@ public class AffichageJavaFX implements Affichage {
                 "-fx-border-radius: 12px;" +
                 "-fx-background-radius: 12px;"
             );
-            StackPane.setAlignment(endGameLabel, Pos.CENTER);
 
             Button reloadButton = new Button("⟳ Rejouer");
             reloadButton.setStyle(
@@ -118,9 +129,9 @@ public class AffichageJavaFX implements Affichage {
                 "-fx-background-radius: 8;" +
                 "-fx-cursor: hand;"
             );
-            reloadButton.setOnMouseEntered(e -> reloadButton.setStyle(reloadButton.getStyle() + "-fx-cursor: hand;"));
-            reloadButton.setOnMouseExited(e -> reloadButton.setStyle(reloadButton.getStyle().replace("-fx-cursor: hand;", "")));
-            reloadButton.setOnAction(e -> {
+            reloadButton.setOnMouseEntered(ev -> reloadButton.setStyle(reloadButton.getStyle() + "-fx-cursor: hand;"));
+            reloadButton.setOnMouseExited(ev -> reloadButton.setStyle(reloadButton.getStyle().replace("-fx-cursor: hand;", "")));
+            reloadButton.setOnAction(ev -> {
                 isWhiteTurn = true;
                 selectedPieceRow = -1;
                 selectedPieceCol = -1;
@@ -132,9 +143,12 @@ public class AffichageJavaFX implements Affichage {
                 afficherPlateau(cellSize);
                 turnLabel.setText("Tour : Blancs");
                 gridPane.setDisable(false);
+                stopChrono();
+                chronoLabel.setText("Chrono : 00:00");
+                chronoStarted = false;
             });
 
-            Button demoButton = new Button("Démo");
+            demoButton = new Button("Démo");
             demoButton.setStyle(
                 "-fx-background-color: #2196F3; " +
                 "-fx-text-fill: white; " +
@@ -144,15 +158,15 @@ public class AffichageJavaFX implements Affichage {
                 "-fx-background-radius: 8;" +
                 "-fx-cursor: hand;"
             );
-            demoButton.setOnMouseEntered(ev -> demoButton.setStyle(demoButton.getStyle() + "-fx-cursor: hand;"));
-            demoButton.setOnMouseExited(ev -> demoButton.setStyle(demoButton.getStyle().replace("-fx-cursor: hand;", "")));
             demoButton.setOnAction(ev -> {
                 Demo demo = new Demo(this, echiquier, pieces);
                 demo.startDemo();
+                // demoButton.setVisible(false); // On ne masque plus le bouton pour garder le centrage
+                startChrono();
             });
 
-            HBox topBar = new HBox(40, turnLabel, reloadButton, demoButton);
-            topBar.setStyle("-fx-alignment: center; -fx-padding: 18; -fx-spacing: 40;");
+            HBox topBar = new HBox(30, turnLabel, chronoLabel, reloadButton, demoButton);
+            topBar.setStyle("-fx-alignment: center; -fx-padding: 18; -fx-spacing: 30;");
 
             VBox centerBox = new VBox(20, gridPane, endGameLabel);
             centerBox.setAlignment(Pos.CENTER);
@@ -233,8 +247,9 @@ public class AffichageJavaFX implements Affichage {
 
         private void handlePieceClick(int row, int col, double cellSize) {
             if (gameEnded) return;
+            if (!chronoStarted) startChrono();
             Piece piece = pieces[row][col];
-            if (piece != null && ((isWhiteTurn && piece.isWhite()) || (!isWhiteTurn && !piece.isWhite()))) {
+            if (piece != null && ((isWhiteTurn && piece.isWhite()) || (!isWhiteTurn && !pieces[row][col].isWhite()))) {
                 selectedPieceRow = row;
                 selectedPieceCol = col;
                 highlightPossibleMoves(piece, cellSize);
@@ -243,6 +258,7 @@ public class AffichageJavaFX implements Affichage {
 
         private void handleNonEmptyCellClick(int row, int col, double cellSize) {
             if (gameEnded) return;
+            if (!chronoStarted) startChrono();
             boolean moved = false;
             if (selectedPieceRow != -1) {
                 Piece movingPiece = pieces[selectedPieceRow][selectedPieceCol];
@@ -266,6 +282,7 @@ public class AffichageJavaFX implements Affichage {
 
         private void handleEmptyCellClick(int row, int col, double cellSize) {
             if (gameEnded) return;
+            if (!chronoStarted) startChrono();
             boolean moved = false;
             if (selectedPieceRow != -1) {
                 Piece movingPiece = pieces[selectedPieceRow][selectedPieceCol];
@@ -303,6 +320,7 @@ public class AffichageJavaFX implements Affichage {
             endGameLabel.toFront();
             gameEnded = true;
             gridPane.setDisable(true);
+            stopChrono();
         }
 
         // Rendre cette méthode publique pour la démo
@@ -412,6 +430,29 @@ public class AffichageJavaFX implements Affichage {
                 }
             }
             return false;
+        }
+
+        // Chronomètre
+        private void startChrono() {
+            chronoStart = System.currentTimeMillis();
+            chronoLabel.setText("Chrono : 00:00");
+            if (chronoTimeline != null) chronoTimeline.stop();
+            chronoTimeline = new javafx.animation.Timeline(
+                new javafx.animation.KeyFrame(javafx.util.Duration.seconds(1), e -> updateChrono())
+            );
+            chronoTimeline.setCycleCount(javafx.animation.Animation.INDEFINITE);
+            chronoTimeline.play();
+            chronoStarted = true;
+        }
+        private void stopChrono() {
+            if (chronoTimeline != null) chronoTimeline.stop();
+            chronoStarted = false;
+        }
+        private void updateChrono() {
+            long elapsed = (System.currentTimeMillis() - chronoStart) / 1000;
+            long min = elapsed / 60;
+            long sec = elapsed % 60;
+            chronoLabel.setText(String.format("Chrono : %02d:%02d", min, sec));
         }
 
         // Permet à la démo de déplacer une pièce automatiquement
