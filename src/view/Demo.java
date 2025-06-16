@@ -19,9 +19,22 @@ public class Demo {
     }
 
     public void startDemo() {
-        if (running) return;
         running = true;
         nextMove();
+    }
+
+    public void pauseDemo() {
+        running = false;
+    }
+    public void resumeDemo() {
+        running = true;
+        nextMove();
+    }
+    public boolean isRunning() {
+        return running;
+    }
+    public void setRunning(boolean r) {
+        running = r;
     }
 
     private void nextMove() {
@@ -39,13 +52,21 @@ public class Demo {
         // Joue un coup au hasard
         int[] move = moves.get(random.nextInt(moves.size()));
         int fromRow = move[0], fromCol = move[1], toRow = move[2], toCol = move[3];
-        // 1. Surligne les coups possibles
+        // Surligne la case de départ (highlight jaune) et la case de destination (highlight orange)
+        Platform.runLater(() -> {
+            app.highlightSelectedCell(fromRow, fromCol, 60);
+            app.highlightDestinationCell(toRow, toCol, 60);
+        });
+        // 1. Surligne les coups possibles (classique) et la case de départ
         Platform.runLater(() -> app.highlightPossibleMoves(app.getPieceAt(fromRow, fromCol), 60));
-        // 2. Attend 500ms, puis effectue le déplacement
+        // 2. Attend 300ms, puis surligne la case de destination (sans bordure)
         new Thread(() -> {
-            try { Thread.sleep(500); } catch (InterruptedException ignored) {}
+            try { Thread.sleep(300); } catch (InterruptedException ignored) {}
+            Platform.runLater(() -> app.highlightDestinationCellSansBorder(toRow, toCol, 60));
+            // 3. Attend 400ms, puis effectue le déplacement
+            try { Thread.sleep(400); } catch (InterruptedException ignored) {}
             Platform.runLater(() -> app.simulateMove(fromRow, fromCol, toRow, toCol));
-            // 3. Attend encore 200ms avant le prochain coup
+            // 4. Attend encore 200ms avant le prochain coup
             try { Thread.sleep(200); } catch (InterruptedException ignored) {}
             Platform.runLater(this::nextMove);
         }).start();
@@ -56,9 +77,15 @@ public class Demo {
         for (int i = 0; i < 8; i++) {
             for (int j = 0; j < 8; j++) {
                 Piece p = pieces[i][j];
-                if (p != null && p instanceof model.King) {
-                    if (p.isWhite()) whiteKing = true;
-                    else blackKing = true;
+                if (p != null) {
+                    if ((p instanceof model.PiecePersonnalisee && ((model.PiecePersonnalisee)p).isKing() && p.isWhite())
+                        || (p instanceof model.King && p.isWhite())) {
+                        whiteKing = true;
+                    }
+                    if ((p instanceof model.PiecePersonnalisee && ((model.PiecePersonnalisee)p).isKing() && !p.isWhite())
+                        || (p instanceof model.King && !p.isWhite())) {
+                        blackKing = true;
+                    }
                 }
             }
         }

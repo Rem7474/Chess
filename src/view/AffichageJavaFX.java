@@ -25,6 +25,7 @@ public class AffichageJavaFX implements Affichage {
     private static int selectedPieceCol = -1;
     private static boolean isWhiteTurn = true;
     private static Piece[][] pieces;
+    private static Piece[][] piecesClassiques = new Piece[8][8];
 
     @Override
     public void afficher(Echiquier echiquier) {
@@ -35,33 +36,30 @@ public class AffichageJavaFX implements Affichage {
     }
 
     private static void initializePieces(Echiquier echiquier) {
-        // Initialisation des pièces (exemple, adapte selon ta logique)
-        pieces[0][0] = new Rook(0, 0, true);
-        pieces[0][7] = new Rook(0, 7, true);
-        pieces[0][1] = new Knight(0, 1, true);
-        pieces[0][6] = new Knight(0, 6, true);
-        pieces[0][2] = new Bishop(0, 2, true);
-        pieces[0][5] = new Bishop(0, 5, true);
-        pieces[0][3] = new Queen(0, 3, true);
-        pieces[0][4] = new King(0, 4, true);
+        // Réinitialise le tableau
         for (int i = 0; i < 8; i++) {
-            pieces[1][i] = new Pawn(1, i, true);
-        }
-        pieces[7][0] = new Rook(7, 0, false);
-        pieces[7][7] = new Rook(7, 7, false);
-        pieces[7][1] = new Knight(7, 1, false);
-        pieces[7][6] = new Knight(7, 6, false);
-        pieces[7][2] = new Bishop(7, 2, false);
-        pieces[7][5] = new Bishop(7, 5, false);
-        pieces[7][3] = new Queen(7, 3, false);
-        pieces[7][4] = new King(7, 4, false);
-        for (int i = 0; i < 8; i++) {
-            pieces[6][i] = new Pawn(6, i, false);
-        }
-        for (int i = 2; i < 6; i++) {
             for (int j = 0; j < 8; j++) {
                 pieces[i][j] = null;
+                piecesClassiques[i][j] = null;
             }
+        }
+        // Place uniquement les pièces classiques au lancement
+        try {
+            java.util.List<model.PiecePersonnalisee> persos = model.PieceLoader.chargerDepuisJson("src/pieces.json");
+            for (model.PiecePersonnalisee p : persos) {
+                if (p.getRow() >= 0 && p.getRow() < 8 && p.getCol() >= 0 && p.getCol() < 8) {
+                    String type = p.getType().toLowerCase();
+                    if (type.equals("rook") || type.equals("knight") || type.equals("bishop") || type.equals("queen") || type.equals("king") || type.equals("pawn")) {
+                        int code = echiquier.getEmplacement(p.getRow(), p.getCol());
+                        if (code == p.getUnicode()) {
+                            pieces[p.getRow()][p.getCol()] = p;
+                            piecesClassiques[p.getRow()][p.getCol()] = p;
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Erreur chargement pièces classiques (JavaFX) : " + e.getMessage());
         }
     }
 
@@ -79,6 +77,8 @@ public class AffichageJavaFX implements Affichage {
         private Button demoButton;
         private boolean gameStarted = false;
         private boolean chronoStarted = false;
+        private Demo demoInstance = null;
+        private boolean demoPaused = false;
 
         @Override
         public void start(Stage primaryStage) {
@@ -88,6 +88,8 @@ public class AffichageJavaFX implements Affichage {
             gridPane.setAlignment(Pos.CENTER);
             gridPane.setPrefSize(8 * cellSize, 8 * cellSize);
 
+            // Correction : toujours réinitialiser les pièces à partir de l'échiquier courant
+            AffichageJavaFX.initializePieces(echiquier);
             afficherPlateau(cellSize);
 
             turnLabel = new Label(isWhiteTurn ? "Tour : Blancs" : "Tour : Noirs");
@@ -146,6 +148,9 @@ public class AffichageJavaFX implements Affichage {
                 stopChrono();
                 chronoLabel.setText("Chrono : 00:00");
                 chronoStarted = false;
+                if (demoButton != null) demoButton.setText("Démo");
+                demoInstance = null;
+                demoPaused = false;
             });
 
             demoButton = new Button("Démo");
@@ -159,10 +164,23 @@ public class AffichageJavaFX implements Affichage {
                 "-fx-cursor: hand;"
             );
             demoButton.setOnAction(ev -> {
-                Demo demo = new Demo(this, echiquier, pieces);
-                demo.startDemo();
-                // demoButton.setVisible(false); // On ne masque plus le bouton pour garder le centrage
-                startChrono();
+                if (demoInstance == null || !demoInstance.isRunning()) {
+                    demoInstance = new Demo(this, echiquier, pieces); // Toujours recréer une instance propre
+                    demoInstance.setRunning(true);
+                    demoInstance.startDemo();
+                    demoPaused = false;
+                    demoButton.setText("Pause Démo");
+                    startChrono();
+                } else if (!demoPaused) {
+                    demoInstance.pauseDemo();
+                    demoPaused = true;
+                    demoButton.setText("Reprendre Démo");
+                } else {
+                    demoInstance.resumeDemo();
+                    demoPaused = false;
+                    demoButton.setText("Pause Démo");
+                    startChrono();
+                }
             });
 
             HBox topBar = new HBox(30, turnLabel, chronoLabel, reloadButton, demoButton);
@@ -175,7 +193,47 @@ public class AffichageJavaFX implements Affichage {
             // Création du conteneur principal en superposition
             StackPane rootStack = new StackPane();
 
+            // --- Colonne de sélection des pièces personnalisées ---
+            VBox leftBox = new VBox(16);
+            leftBox.setStyle("-fx-background-color: #e0e7ef; -fx-padding: 18 8 18 8; -fx-border-radius: 8; -fx-background-radius: 8;");
+            leftBox.setAlignment(Pos.TOP_CENTER);
+            leftBox.getChildren().add(new Label("Pièces personnalisées :"));
+            java.util.Map<String, Boolean> etatPerso = new java.util.HashMap<>();
+            try {
+                java.util.List<model.PiecePersonnalisee> persos = model.PieceLoader.chargerDepuisJson("src/pieces.json");
+                java.util.Set<String> typesPerso = new java.util.HashSet<>();
+                for (model.PiecePersonnalisee p : persos) {
+                    if (!p.getType().equalsIgnoreCase("rook") && !p.getType().equalsIgnoreCase("knight") && !p.getType().equalsIgnoreCase("bishop") && !p.getType().equalsIgnoreCase("queen") && !p.getType().equalsIgnoreCase("king") && !p.getType().equalsIgnoreCase("pawn")) {
+                        typesPerso.add(p.getType());
+                        etatPerso.put(p.getType(), false);
+                    }
+                }
+                for (String type : typesPerso) {
+                    Button switchBtn = new Button("Activer " + type);
+                    switchBtn.setStyle("-fx-background-color: #f59e42; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 6 18 6 18;");
+                    switchBtn.setOnAction(ev -> {
+                        boolean actif = etatPerso.get(type);
+                        if (!actif) {
+                            remplacerTypeSurPlateau(type);
+                            switchBtn.setText("Désactiver " + type);
+                            switchBtn.setStyle("-fx-background-color: #1976d2; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 6 18 6 18;");
+                        } else {
+                            restaurerTypeClassique(type);
+                            switchBtn.setText("Activer " + type);
+                            switchBtn.setStyle("-fx-background-color: #f59e42; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 6 18 6 18;");
+                        }
+                        etatPerso.put(type, !actif);
+                        afficherPlateau(cellSize);
+                    });
+                    leftBox.getChildren().add(switchBtn);
+                }
+            } catch (Exception e) {
+                leftBox.getChildren().add(new Label("Erreur chargement pièces perso"));
+            }
+            // --- Fin colonne personnalisée ---
+
             BorderPane root = new BorderPane();
+            root.setLeft(leftBox);
             root.setTop(topBar);
             root.setCenter(centerBox);
             root.setStyle("-fx-background-color: linear-gradient(to bottom right, #f0f4f8, #dbeafe);");
@@ -212,13 +270,32 @@ public class AffichageJavaFX implements Affichage {
                     final int currentCol = colonne;
 
                     if (piece != null) {
-                        String imagePath = getImagePath(piece);
-                        Image image = new Image(getClass().getResourceAsStream("/images/" + imagePath));
-                        if (image != null) {
-                            ImageView imageView = new ImageView(image);
-                            imageView.setFitWidth(cellSize);
-                            imageView.setFitHeight(cellSize);
-                            cell.getChildren().add(imageView);
+                        // Affichage émoji pour toute pièce personnalisée (non classique)
+                        if (piece instanceof model.PiecePersonnalisee) {
+                            String type = ((model.PiecePersonnalisee)piece).getType().toLowerCase();
+                            if (!type.equals("rook") && !type.equals("knight") && !type.equals("bishop") && !type.equals("queen") && !type.equals("king") && !type.equals("pawn")) {
+                                Label emoji = new Label(new String(Character.toChars(((model.PiecePersonnalisee)piece).getUnicode())));
+                                emoji.setStyle("-fx-font-size: 38px; -fx-font-weight: bold;");
+                                cell.getChildren().add(emoji);
+                            } else {
+                                String imagePath = getImagePath(piece);
+                                Image image = new Image(getClass().getResourceAsStream("/images/" + imagePath));
+                                if (image != null) {
+                                    ImageView imageView = new ImageView(image);
+                                    imageView.setFitWidth(cellSize);
+                                    imageView.setFitHeight(cellSize);
+                                    cell.getChildren().add(imageView);
+                                }
+                            }
+                        } else {
+                            String imagePath = getImagePath(piece);
+                            Image image = new Image(getClass().getResourceAsStream("/images/" + imagePath));
+                            if (image != null) {
+                                ImageView imageView = new ImageView(image);
+                                imageView.setFitWidth(cellSize);
+                                imageView.setFitHeight(cellSize);
+                                cell.getChildren().add(imageView);
+                            }
                         }
                         cell.setOnMouseClicked(event -> {
                             if (!gameEnded) {
@@ -321,6 +398,9 @@ public class AffichageJavaFX implements Affichage {
             gameEnded = true;
             gridPane.setDisable(true);
             stopChrono();
+            if (demoButton != null) demoButton.setText("Démo");
+            demoInstance = null;
+            demoPaused = false;
         }
 
         // Rendre cette méthode publique pour la démo
@@ -397,6 +477,10 @@ public class AffichageJavaFX implements Affichage {
         }
 
         private String getImagePath(Piece piece) {
+            if (piece instanceof model.PiecePersonnalisee) {
+                String img = ((model.PiecePersonnalisee) piece).getImagePath();
+                if (img != null && !img.isEmpty()) return img;
+            }
             String color = piece.isWhite() ? "white" : "black";
             if (piece instanceof Rook) {
                 return color + "-rook.png";
@@ -424,8 +508,11 @@ public class AffichageJavaFX implements Affichage {
             for (int i = 0; i < 8; i++) {
                 for (int j = 0; j < 8; j++) {
                     Piece p = pieces[i][j];
-                    if (p instanceof King && p.isWhite() == white) {
-                        return true;
+                    if (p != null) {
+                        if ((p instanceof model.PiecePersonnalisee && ((model.PiecePersonnalisee)p).isKing() && p.isWhite() == white)
+                            || (p instanceof King && p.isWhite() == white)) {
+                            return true;
+                        }
                     }
                 }
             }
@@ -487,6 +574,77 @@ public class AffichageJavaFX implements Affichage {
         // Getter pour accéder à une pièce à une position donnée (pour la démo)
         public Piece getPieceAt(int row, int col) {
             return pieces[row][col];
+        }
+
+        // Surligne une case de destination (avant déplacement en mode démo)
+        public void highlightDestinationCell(int row, int col, double cellSize) {
+            StackPane destCell = (StackPane) getNodeFromGridPane(gridPane, col, 7 - row);
+            if (destCell != null) {
+                destCell.setStyle("-fx-background-color: #ff9800; -fx-border-color: #d7263d; -fx-border-width: 2px; -fx-min-width: " + cellSize + "px; -fx-min-height: " + cellSize + "px;");
+            }
+        }
+
+        // Surligne une case de destination sans bordure (pour la démo)
+        public void highlightDestinationCellSansBorder(int row, int col, double cellSize) {
+            StackPane destCell = (StackPane) getNodeFromGridPane(gridPane, col, 7 - row);
+            if (destCell != null) {
+                destCell.setStyle("-fx-background-color: #ff9800; -fx-border-color: black; -fx-border-width: 1px; -fx-min-width: " + cellSize + "px; -fx-min-height: " + cellSize + "px;");
+            }
+        }
+
+        // Surligne une case de départ (avant déplacement en mode démo)
+        public void highlightSelectedCell(int row, int col, double cellSize) {
+            StackPane selectedCell = (StackPane) getNodeFromGridPane(gridPane, col, 7 - row);
+            if (selectedCell != null) {
+                selectedCell.setStyle("-fx-background-color: #4fc3f7; -fx-min-width: " + cellSize + "px; -fx-min-height: " + cellSize + "px;");
+            }
+        }
+
+        // Remplace toutes les pièces classiques du type donné par les personnalisées, uniquement sur les deux premières (blancs) ou deux dernières (noirs) lignes
+        private void remplacerTypeSurPlateau(String type) {
+            try {
+                java.util.List<model.PiecePersonnalisee> persos = model.PieceLoader.chargerDepuisJson("src/pieces.json");
+                for (model.PiecePersonnalisee p : persos) {
+                    if (p.getType().equalsIgnoreCase(type)) {
+                        int row = p.getRow();
+                        String t = p.getType().toLowerCase();
+                        boolean isClassique = t.equals("rook") || t.equals("knight") || t.equals("bishop") || t.equals("queen") || t.equals("king") || t.equals("pawn");
+                        if (!isClassique && !p.isWhite() && (row == 0 || row == 1)) {
+                            // Pièce personnalisée noire : place-la sur la ligne inversée
+                            int newRow = 7 - row;
+                            pieces[newRow][p.getCol()] = new model.PiecePersonnalisee(p.getName(), p.getUnicode(), p.getImagePath(), newRow, p.getCol(), false, p.getType(), p.isKing(), p.getMovePattern());
+                        } else if (!isClassique && p.isWhite() && (row == 0 || row == 1)) {
+                            pieces[row][p.getCol()] = p;
+                        } else if (isClassique && ((p.isWhite() && (row == 0 || row == 1)) || (!p.isWhite() && (row == 6 || row == 7)))) {
+                            pieces[row][p.getCol()] = p;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("Erreur remplacement pièce personnalisée : " + e.getMessage());
+            }
+        }
+
+        // Restaure les pièces classiques à leur position d'origine pour le type donné, uniquement sur les deux premières/dernières lignes
+        private void restaurerTypeClassique(String type) {
+            for (int i = 0; i < 8; i++) {
+                for (int j = 0; j < 8; j++) {
+                    Piece classique = piecesClassiques[i][j];
+                    if (classique != null && classique.getClass().getSimpleName().equalsIgnoreCase("PiecePersonnalisee") && ((model.PiecePersonnalisee)classique).getType().equalsIgnoreCase(type)) {
+                        // Blancs : lignes 0 et 1, Noirs : lignes 6 et 7
+                        if ((((model.PiecePersonnalisee)classique).isWhite() && (i == 0 || i == 1)) || (!((model.PiecePersonnalisee)classique).isWhite() && (i == 6 || i == 7))) {
+                            pieces[i][j] = classique;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fonction utilitaire pour inverser la position d'une pièce personnalisée pour les noirs (ligne 0/1 -> 7/6)
+        private model.PiecePersonnalisee reverseForBlack(model.PiecePersonnalisee p) {
+            if (p.isWhite()) return p;
+            int newRow = 7 - p.getRow();
+            return new model.PiecePersonnalisee(p.getName(), p.getUnicode(), p.getImagePath(), newRow, p.getCol(), false, p.getType(), p.isKing(), p.movePattern);
         }
     }
 }
