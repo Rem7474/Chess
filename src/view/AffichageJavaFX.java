@@ -27,6 +27,8 @@ public class AffichageJavaFX implements Affichage {
     private static boolean isWhiteTurn = true;
     private static model.PiecePersonnalisee[][] pieces;
     private static model.PiecePersonnalisee[][] piecesClassiques = new model.PiecePersonnalisee[8][8];
+    // Tableau temporaire pour sauvegarder les pièces classiques remplacées par des personnalisées
+    private static model.PiecePersonnalisee[][] sauvegardeClassiques = new model.PiecePersonnalisee[8][8];
 
     @Override
     public void afficher(Echiquier echiquier) {
@@ -42,25 +44,30 @@ public class AffichageJavaFX implements Affichage {
             for (int j = 0; j < 8; j++) {
                 pieces[i][j] = null;
                 piecesClassiques[i][j] = null;
+                sauvegardeClassiques[i][j] = null;
             }
         }
         // Place uniquement les pièces classiques au lancement
         try {
             java.util.List<model.PiecePersonnalisee> persos = model.PieceLoader.chargerDepuisJson("src/pieces.json");
             for (model.PiecePersonnalisee p : persos) {
-                if (p.getRow() >= 0 && p.getRow() < 8 && p.getCol() >= 0 && p.getCol() < 8) {
-                    String type = p.getType().toLowerCase();
-                    if (type.equals("rook") || type.equals("knight") || type.equals("bishop") || type.equals("queen") || type.equals("king") || type.equals("pawn")) {
-                        int code = echiquier.getEmplacement(p.getRow(), p.getCol());
-                        if (code == p.getUnicode()) {
-                            pieces[p.getRow()][p.getCol()] = p;
-                            piecesClassiques[p.getRow()][p.getCol()] = p;
-                        }
-                    }
+                String type = p.getType().toLowerCase();
+                if ((type.equals("rook") || type.equals("knight") || type.equals("bishop") || type.equals("queen") || type.equals("king") || type.equals("pawn"))
+                    && p.isWhite()) {
+                    pieces[p.getRow()][p.getCol()] = p;
+                    piecesClassiques[p.getRow()][p.getCol()] = p;
+                }
+                // Symétrie pour les noirs
+                if ((type.equals("rook") || type.equals("knight") || type.equals("bishop") || type.equals("queen") || type.equals("king") || type.equals("pawn"))
+                    && !p.isWhite()) {
+                    int row = p.getRow();
+                    int col = p.getCol();
+                    pieces[row][col] = p;
+                    piecesClassiques[row][col] = p;
                 }
             }
         } catch (Exception e) {
-            System.err.println("Erreur chargement pièces classiques (JavaFX) : " + e.getMessage());
+            System.err.println("Erreur chargement pièces (JavaFX) : " + e.getMessage());
         }
     }
 
@@ -80,6 +87,7 @@ public class AffichageJavaFX implements Affichage {
         private boolean chronoStarted = false;
         private Demo demoInstance = null;
         private boolean demoPaused = false;
+        private VBox leftBox; // Déclaration de leftBox en tant qu'attribut d'instance
 
         @Override
         public void start(Stage primaryStage) {
@@ -135,6 +143,21 @@ public class AffichageJavaFX implements Affichage {
             reloadButton.setOnMouseEntered(ev -> reloadButton.setStyle(reloadButton.getStyle() + "-fx-cursor: hand;"));
             reloadButton.setOnMouseExited(ev -> reloadButton.setStyle(reloadButton.getStyle().replace("-fx-cursor: hand;", "")));
             reloadButton.setOnAction(ev -> {
+                // 1. Stopper la démo AVANT toute réinitialisation
+                if (demoInstance != null && demoInstance.isRunning()) {
+                    demoInstance.setRunning(false);
+                }
+                // 2. Réinitialiser l'état des interrupteurs des pièces personnalisées
+                for (Node n : leftBox.getChildren()) {
+                    if (n instanceof HBox) {
+                        for (Node c : ((HBox) n).getChildren()) {
+                            if (c instanceof javafx.scene.control.CheckBox) {
+                                ((javafx.scene.control.CheckBox) c).setSelected(false);
+                            }
+                        }
+                    }
+                }
+                // 3. Réinitialisation du plateau et de l'UI
                 isWhiteTurn = true;
                 selectedPieceRow = -1;
                 selectedPieceCol = -1;
@@ -195,38 +218,43 @@ public class AffichageJavaFX implements Affichage {
             StackPane rootStack = new StackPane();
 
             // --- Colonne de sélection des pièces personnalisées ---
-            VBox leftBox = new VBox(16);
+            leftBox = new VBox(16);
             leftBox.setStyle("-fx-background-color: #e0e7ef; -fx-padding: 18 8 18 8; -fx-border-radius: 8; -fx-background-radius: 8;");
             leftBox.setAlignment(Pos.TOP_CENTER);
             leftBox.getChildren().add(new Label("Pièces personnalisées :"));
             java.util.Map<String, Boolean> etatPerso = new java.util.HashMap<>();
             try {
                 java.util.List<model.PiecePersonnalisee> persos = model.PieceLoader.chargerDepuisJson("src/pieces.json");
-                java.util.Set<String> typesPerso = new java.util.HashSet<>();
+                java.util.Set<String> typesPerso = new java.util.LinkedHashSet<>();
+                java.util.Map<String, String> nomsPerso = new java.util.HashMap<>();
                 for (model.PiecePersonnalisee p : persos) {
+                    // Ignore les entrées sans type ou avec type null (ex : doc JSON)
+                    if (p.getType() == null) continue;
                     if (!p.getType().equalsIgnoreCase("rook") && !p.getType().equalsIgnoreCase("knight") && !p.getType().equalsIgnoreCase("bishop") && !p.getType().equalsIgnoreCase("queen") && !p.getType().equalsIgnoreCase("king") && !p.getType().equalsIgnoreCase("pawn")) {
                         typesPerso.add(p.getType());
+                        nomsPerso.put(p.getType(), p.getName());
                         etatPerso.put(p.getType(), false);
                     }
                 }
                 for (String type : typesPerso) {
-                    Button switchBtn = new Button("Activer " + type);
-                    switchBtn.setStyle("-fx-background-color: #f59e42; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 6 18 6 18;");
-                    switchBtn.setOnAction(ev -> {
-                        boolean actif = etatPerso.get(type);
-                        if (!actif) {
+                    HBox ligne = new HBox(8);
+                    ligne.setAlignment(Pos.CENTER_LEFT);
+                    Label nom = new Label(nomsPerso.get(type));
+                    nom.setStyle("-fx-font-size: 15px; -fx-font-weight: bold; -fx-text-fill: #333;");
+                    javafx.scene.control.CheckBox check = new javafx.scene.control.CheckBox();
+                    check.setStyle("-fx-scale-x:1.3;-fx-scale-y:1.3;");
+                    check.setSelected(false);
+                    check.selectedProperty().addListener((obs, oldVal, newVal) -> {
+                        if (newVal) {
                             remplacerTypeSurPlateau(type);
-                            switchBtn.setText("Désactiver " + type);
-                            switchBtn.setStyle("-fx-background-color: #1976d2; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 6 18 6 18;");
                         } else {
                             restaurerTypeClassique(type);
-                            switchBtn.setText("Activer " + type);
-                            switchBtn.setStyle("-fx-background-color: #f59e42; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8; -fx-padding: 6 18 6 18;");
                         }
-                        etatPerso.put(type, !actif);
+                        etatPerso.put(type, newVal);
                         afficherPlateau(cellSize);
                     });
-                    leftBox.getChildren().add(switchBtn);
+                    ligne.getChildren().addAll(nom, check);
+                    leftBox.getChildren().add(ligne);
                 }
             } catch (Exception e) {
                 leftBox.getChildren().add(new Label("Erreur chargement pièces perso"));
@@ -581,24 +609,38 @@ public class AffichageJavaFX implements Affichage {
             }
         }
 
-        // Remplace toutes les pièces classiques du type donné par les personnalisées, uniquement sur les deux premières (blancs) ou deux dernières (noirs) lignes
+        // Remplace toutes les pièces classiques du type donné par les personnalisées, à leur position unique définie dans le JSON
         private void remplacerTypeSurPlateau(String type) {
             try {
                 java.util.List<model.PiecePersonnalisee> persos = model.PieceLoader.chargerDepuisJson("src/pieces.json");
                 for (model.PiecePersonnalisee p : persos) {
-                    if (p.getType().equalsIgnoreCase(type)) {
+                    if (p.getType().equalsIgnoreCase(type) && p.isWhite()) {
+                        // Blanc : position du JSON
                         int row = p.getRow();
-                        String t = p.getType().toLowerCase();
-                        boolean isClassique = t.equals("rook") || t.equals("knight") || t.equals("bishop") || t.equals("queen") || t.equals("king") || t.equals("pawn");
-                        if (!isClassique && !p.isWhite() && (row == 0 || row == 1)) {
-                            // Pièce personnalisée noire : place-la sur la ligne inversée
-                            int newRow = 7 - row;
-                            pieces[newRow][p.getCol()] = new model.PiecePersonnalisee(p.getName(), p.getUnicode(), p.getImagePath(), newRow, p.getCol(), false, p.getType(), p.isKing(), p.getMovePattern());
-                        } else if (!isClassique && p.isWhite() && (row == 0 || row == 1)) {
-                            pieces[row][p.getCol()] = p;
-                        } else if (isClassique && ((p.isWhite() && (row == 0 || row == 1)) || (!p.isWhite() && (row == 6 || row == 7)))) {
-                            pieces[row][p.getCol()] = p;
+                        int col = p.getCol();
+                        if (sauvegardeClassiques[row][col] == null) {
+                            sauvegardeClassiques[row][col] = pieces[row][col];
                         }
+                        pieces[row][col] = p;
+                        // Noir : symétrie centrale
+                        int rowNoir = 7 - row;
+                        int colNoir = 7 - col;
+                        if (sauvegardeClassiques[rowNoir][colNoir] == null) {
+                            sauvegardeClassiques[rowNoir][colNoir] = pieces[rowNoir][colNoir];
+                        }
+                        // Crée la version noire de la pièce personnalisée
+                        model.PiecePersonnalisee pNoir = new model.PiecePersonnalisee(
+                            p.getName(),
+                            p.getUnicode() + 6, // Décalage unicode pour noirs si possible, sinon garder le même
+                            p.getImagePath(),
+                            rowNoir,
+                            colNoir,
+                            false,
+                            p.getType(),
+                            p.isKing(),
+                            p.getMovePattern()
+                        );
+                        pieces[rowNoir][colNoir] = pNoir;
                     }
                 }
             } catch (Exception e) {
@@ -606,15 +648,17 @@ public class AffichageJavaFX implements Affichage {
             }
         }
 
-        // Restaure les pièces classiques à leur position d'origine pour le type donné, uniquement sur les deux premières/dernières lignes
+        // Restaure les pièces classiques à leur position d'origine pour le type donné, côté blanc ET côté noir
         private void restaurerTypeClassique(String type) {
             for (int i = 0; i < 8; i++) {
                 for (int j = 0; j < 8; j++) {
-                    Piece classique = piecesClassiques[i][j];
-                    if (classique != null && classique.getClass().getSimpleName().equalsIgnoreCase("PiecePersonnalisee") && ((model.PiecePersonnalisee)classique).getType().equalsIgnoreCase(type)) {
-                        // Blancs : lignes 0 et 1, Noirs : lignes 6 et 7
-                        if ((((model.PiecePersonnalisee)classique).isWhite() && (i == 0 || i == 1)) || (!((model.PiecePersonnalisee)classique).isWhite() && (i == 6 || i == 7))) {
-                            pieces[i][j] = classique;
+                    PiecePersonnalisee actuelle = pieces[i][j];
+                    if (actuelle != null && actuelle.getType().equalsIgnoreCase(type)) {
+                        if (sauvegardeClassiques[i][j] != null) {
+                            pieces[i][j] = sauvegardeClassiques[i][j];
+                            sauvegardeClassiques[i][j] = null;
+                        } else {
+                            pieces[i][j] = null;
                         }
                     }
                 }
