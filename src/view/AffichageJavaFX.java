@@ -1,6 +1,7 @@
 package view;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
@@ -377,7 +378,7 @@ public class AffichageJavaFX implements Affichage {
             }
         }
 
-        private void showEndGame(String message) {
+        public void showEndGame(String message) {
             endGameLabel.setText(message);
             endGameLabel.setVisible(true);
             endGameLabel.toFront();
@@ -387,6 +388,19 @@ public class AffichageJavaFX implements Affichage {
             if (demoButton != null) demoButton.setText("Démo");
             demoInstance = null;
             demoPaused = false;
+        }
+
+        public void showTemporaryMessage(String message, int timeoutMillis) {
+            endGameLabel.setText(message);
+            endGameLabel.setVisible(true);
+            endGameLabel.toFront();
+            new Thread(() -> {
+                try { Thread.sleep(timeoutMillis); } catch (InterruptedException ignored) {}
+                Platform.runLater(() -> {
+                    endGameLabel.setText("");
+                    endGameLabel.setVisible(false);
+                });
+            }).start();
         }
 
         // Rendre cette méthode publique pour la démo
@@ -612,6 +626,13 @@ public class AffichageJavaFX implements Affichage {
             if (p.isWhite()) return p;
             int newRow = 7 - p.getRow();
             return new model.PiecePersonnalisee(p.getName(), p.getUnicode(), p.getImagePath(), newRow, p.getCol(), false, p.getType(), p.isKing(), p.getMovePattern());
+        }
+
+        public void switchPlayer() {
+            isWhiteTurn = !isWhiteTurn;
+            if (turnLabel != null) {
+                turnLabel.setText(isWhiteTurn ? "Tour : Blancs" : "Tour : Noirs");
+            }
         }
     }
 }

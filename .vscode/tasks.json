@@ -1,0 +1,11 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"label": "Test Console Chess",
+			"command": "javac -cp src -d bin src/model/*.java src/controller/*.java src/view/*.java && java -cp bin controller.Jeu",
+			"group": "test"
+		}
+	]
+}

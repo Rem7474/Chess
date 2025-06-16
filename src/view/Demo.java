@@ -41,12 +41,40 @@ public class Demo {
         if (!running) return;
         if (isGameOver()) {
             running = false;
+            // Affichage du message de fin de partie dans l'UI
+            Platform.runLater(() -> {
+                boolean whiteKing = false, blackKing = false;
+                for (int i = 0; i < 8; i++) {
+                    for (int j = 0; j < 8; j++) {
+                        PiecePersonnalisee p = pieces[i][j];
+                        if (p != null && p.isKing()) {
+                            if (p.isWhite()) whiteKing = true;
+                            else blackKing = true;
+                        }
+                    }
+                }
+                if (!whiteKing)
+                    app.showEndGame("Victoire des noirs !");
+                else if (!blackKing)
+                    app.showEndGame("Victoire des blancs !");
+                else
+                    app.showEndGame("Fin de partie");
+            });
             return;
         }
         // Cherche tous les coups possibles pour le joueur courant
         List<int[]> moves = getAllPossibleMoves(app.isWhiteTurn());
         if (moves.isEmpty()) {
-            running = false;
+            // Si la partie n'est pas finie mais aucun coup possible, passe le tour et relance la démo
+            if (!isGameOver()) {
+                Platform.runLater(() -> {
+                    app.showTemporaryMessage("Aucune pièce ne peut bouger pour ce joueur. Tour passé automatiquement.", 5000);
+                    app.switchPlayer();
+                });
+                Platform.runLater(this::nextMove); // Relance la démo pour l'autre joueur
+            } else {
+                running = false;
+            }
             return;
         }
         // Joue un coup au hasard
