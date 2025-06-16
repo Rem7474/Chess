@@ -134,7 +134,24 @@ public class AffichageJavaFX implements Affichage {
                 gridPane.setDisable(false);
             });
 
-            HBox topBar = new HBox(40, turnLabel, reloadButton);
+            Button demoButton = new Button("Démo");
+            demoButton.setStyle(
+                "-fx-background-color: #2196F3; " +
+                "-fx-text-fill: white; " +
+                "-fx-font-weight: bold; " +
+                "-fx-font-size: 16px;" +
+                "-fx-padding: 8 24 8 24; " +
+                "-fx-background-radius: 8;" +
+                "-fx-cursor: hand;"
+            );
+            demoButton.setOnMouseEntered(ev -> demoButton.setStyle(demoButton.getStyle() + "-fx-cursor: hand;"));
+            demoButton.setOnMouseExited(ev -> demoButton.setStyle(demoButton.getStyle().replace("-fx-cursor: hand;", "")));
+            demoButton.setOnAction(ev -> {
+                Demo demo = new Demo(this, echiquier, pieces);
+                demo.startDemo();
+            });
+
+            HBox topBar = new HBox(40, turnLabel, reloadButton, demoButton);
             topBar.setStyle("-fx-alignment: center; -fx-padding: 18; -fx-spacing: 40;");
 
             VBox centerBox = new VBox(20, gridPane, endGameLabel);
@@ -288,15 +305,25 @@ public class AffichageJavaFX implements Affichage {
             gridPane.setDisable(true);
         }
 
-        private void highlightPossibleMoves(Piece piece, double cellSize) {
+        // Rendre cette méthode publique pour la démo
+        public void highlightPossibleMoves(Piece piece, double cellSize) {
             resetBoardColors(cellSize);
-            List<int[]> possibleMoves = piece.calculatePossibleMoves(getBoardState());
-            for (int[] move : possibleMoves) {
-                int newRow = move[0];
-                int newCol = move[1];
-                StackPane cell = (StackPane) getNodeFromGridPane(gridPane, newCol, 7 - newRow);
-                if (cell != null) {
-                    cell.setStyle("-fx-background-color: lightgreen; -fx-border-color: black; -fx-border-width: 1px; -fx-min-width: " + cellSize + "px; -fx-min-height: " + cellSize + "px;");
+            // Surligne la case de la pièce sélectionnée
+            if (piece != null) {
+                int row = piece.getRow();
+                int col = piece.getCol();
+                StackPane selectedCell = (StackPane) getNodeFromGridPane(gridPane, col, 7 - row);
+                if (selectedCell != null) {
+                    selectedCell.setStyle("-fx-background-color: #4fc3f7; -fx-border-color: black; -fx-border-width: 1px; -fx-min-width: " + cellSize + "px; -fx-min-height: " + cellSize + "px;");
+                }
+                List<int[]> possibleMoves = piece.calculatePossibleMoves(getBoardState());
+                for (int[] move : possibleMoves) {
+                    int newRow = move[0];
+                    int newCol = move[1];
+                    StackPane cell = (StackPane) getNodeFromGridPane(gridPane, newCol, 7 - newRow);
+                    if (cell != null) {
+                        cell.setStyle("-fx-background-color: lightgreen; -fx-border-color: black; -fx-border-width: 1px; -fx-min-width: " + cellSize + "px; -fx-min-height: " + cellSize + "px;");
+                    }
                 }
             }
         }
@@ -385,6 +412,40 @@ public class AffichageJavaFX implements Affichage {
                 }
             }
             return false;
+        }
+
+        // Permet à la démo de déplacer une pièce automatiquement
+        public void simulateMove(int fromRow, int fromCol, int toRow, int toCol) {
+            if (gameEnded) return;
+            Piece movingPiece = pieces[fromRow][fromCol];
+            if (movingPiece != null && isValidMove(fromRow, fromCol, toRow, toCol)) {
+                pieces[toRow][toCol] = movingPiece;
+                pieces[fromRow][fromCol] = null;
+                movingPiece.setRow(toRow);
+                movingPiece.setCol(toCol);
+                isWhiteTurn = !isWhiteTurn;
+                turnLabel.setText(isWhiteTurn ? "Tour : Blancs" : "Tour : Noirs");
+                afficherPlateau(60);
+                checkEndGame();
+            }
+        }
+
+        // Getter pour la démo automatique
+        public boolean isWhiteTurn() {
+            return isWhiteTurn;
+        }
+
+        // Pour la démo : surligne les coups possibles d'une pièce donnée
+        public void highlightPossibleMovesDemo(int row, int col) {
+            Piece piece = pieces[row][col];
+            if (piece != null) {
+                highlightPossibleMoves(piece, 60);
+            }
+        }
+
+        // Getter pour accéder à une pièce à une position donnée (pour la démo)
+        public Piece getPieceAt(int row, int col) {
+            return pieces[row][col];
         }
     }
 }
