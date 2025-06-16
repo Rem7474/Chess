@@ -24,12 +24,12 @@ public class AffichageJavaFX implements Affichage {
     private static int selectedPieceRow = -1;
     private static int selectedPieceCol = -1;
     private static boolean isWhiteTurn = true;
-    private static Piece[][] pieces;
-    private static Piece[][] piecesClassiques = new Piece[8][8];
+    private static model.PiecePersonnalisee[][] pieces;
+    private static model.PiecePersonnalisee[][] piecesClassiques = new model.PiecePersonnalisee[8][8];
 
     @Override
     public void afficher(Echiquier echiquier) {
-        pieces = new Piece[8][8];
+        pieces = new model.PiecePersonnalisee[8][8];
         initializePieces(echiquier);
         JavaFXApp.echiquier = echiquier;
         Application.launch(JavaFXApp.class);
@@ -262,31 +262,17 @@ public class AffichageJavaFX implements Affichage {
             gridPane.getChildren().clear();
             for (int ligne = 7; ligne >= 0; ligne--) {
                 for (int colonne = 0; colonne < 8; colonne++) {
-                    Piece piece = pieces[ligne][colonne];
+                    model.PiecePersonnalisee piece = pieces[ligne][colonne];
                     StackPane cell = new StackPane();
                     cell.setStyle(getCellStyle(ligne, colonne, cellSize));
-
                     final int currentRow = ligne;
                     final int currentCol = colonne;
-
                     if (piece != null) {
-                        // Affichage émoji pour toute pièce personnalisée (non classique)
-                        if (piece instanceof model.PiecePersonnalisee) {
-                            String type = ((model.PiecePersonnalisee)piece).getType().toLowerCase();
-                            if (!type.equals("rook") && !type.equals("knight") && !type.equals("bishop") && !type.equals("queen") && !type.equals("king") && !type.equals("pawn")) {
-                                Label emoji = new Label(new String(Character.toChars(((model.PiecePersonnalisee)piece).getUnicode())));
-                                emoji.setStyle("-fx-font-size: 38px; -fx-font-weight: bold;");
-                                cell.getChildren().add(emoji);
-                            } else {
-                                String imagePath = getImagePath(piece);
-                                Image image = new Image(getClass().getResourceAsStream("/images/" + imagePath));
-                                if (image != null) {
-                                    ImageView imageView = new ImageView(image);
-                                    imageView.setFitWidth(cellSize);
-                                    imageView.setFitHeight(cellSize);
-                                    cell.getChildren().add(imageView);
-                                }
-                            }
+                        String type = piece.getType().toLowerCase();
+                        if (!type.equals("rook") && !type.equals("knight") && !type.equals("bishop") && !type.equals("queen") && !type.equals("king") && !type.equals("pawn")) {
+                            Label emoji = new Label(new String(Character.toChars(piece.getUnicode())));
+                            emoji.setStyle("-fx-font-size: 38px; -fx-font-weight: bold;");
+                            cell.getChildren().add(emoji);
                         } else {
                             String imagePath = getImagePath(piece);
                             Image image = new Image(getClass().getResourceAsStream("/images/" + imagePath));
@@ -325,7 +311,7 @@ public class AffichageJavaFX implements Affichage {
         private void handlePieceClick(int row, int col, double cellSize) {
             if (gameEnded) return;
             if (!chronoStarted) startChrono();
-            Piece piece = pieces[row][col];
+            PiecePersonnalisee piece = pieces[row][col];
             if (piece != null && ((isWhiteTurn && piece.isWhite()) || (!isWhiteTurn && !pieces[row][col].isWhite()))) {
                 selectedPieceRow = row;
                 selectedPieceCol = col;
@@ -338,8 +324,8 @@ public class AffichageJavaFX implements Affichage {
             if (!chronoStarted) startChrono();
             boolean moved = false;
             if (selectedPieceRow != -1) {
-                Piece movingPiece = pieces[selectedPieceRow][selectedPieceCol];
-                Piece targetPiece = pieces[row][col];
+                PiecePersonnalisee movingPiece = pieces[selectedPieceRow][selectedPieceCol];
+                PiecePersonnalisee targetPiece = pieces[row][col];
                 if (isValidMove(selectedPieceRow, selectedPieceCol, row, col)) {
                     pieces[selectedPieceRow][selectedPieceCol] = null;
                     pieces[row][col] = movingPiece;
@@ -362,7 +348,7 @@ public class AffichageJavaFX implements Affichage {
             if (!chronoStarted) startChrono();
             boolean moved = false;
             if (selectedPieceRow != -1) {
-                Piece movingPiece = pieces[selectedPieceRow][selectedPieceCol];
+                PiecePersonnalisee movingPiece = pieces[selectedPieceRow][selectedPieceCol];
                 if (isValidMove(selectedPieceRow, selectedPieceCol, row, col)) {
                     pieces[row][col] = movingPiece;
                     pieces[selectedPieceRow][selectedPieceCol] = null;
@@ -404,7 +390,7 @@ public class AffichageJavaFX implements Affichage {
         }
 
         // Rendre cette méthode publique pour la démo
-        public void highlightPossibleMoves(Piece piece, double cellSize) {
+        public void highlightPossibleMoves(PiecePersonnalisee piece, double cellSize) {
             resetBoardColors(cellSize);
             // Surligne la case de la pièce sélectionnée
             if (piece != null) {
@@ -427,7 +413,7 @@ public class AffichageJavaFX implements Affichage {
         }
 
         private boolean isValidMove(int fromRow, int fromCol, int toRow, int toCol) {
-            Piece piece = pieces[fromRow][fromCol];
+            PiecePersonnalisee piece = pieces[fromRow][fromCol];
             if (piece == null) {
                 return false;
             }
@@ -476,26 +462,8 @@ public class AffichageJavaFX implements Affichage {
             return null;
         }
 
-        private String getImagePath(Piece piece) {
-            if (piece instanceof model.PiecePersonnalisee) {
-                String img = ((model.PiecePersonnalisee) piece).getImagePath();
-                if (img != null && !img.isEmpty()) return img;
-            }
-            String color = piece.isWhite() ? "white" : "black";
-            if (piece instanceof Rook) {
-                return color + "-rook.png";
-            } else if (piece instanceof Knight) {
-                return color + "-knight.png";
-            } else if (piece instanceof Bishop) {
-                return color + "-bishop.png";
-            } else if (piece instanceof Queen) {
-                return color + "-queen.png";
-            } else if (piece instanceof King) {
-                return color + "-king.png";
-            } else if (piece instanceof Pawn) {
-                return color + "-pawn.png";
-            }
-            return "";
+        private String getImagePath(model.PiecePersonnalisee piece) {
+            return piece.getImagePath();
         }
 
         private String getCellStyle(int ligne, int colonne, double cellSize) {
@@ -507,10 +475,9 @@ public class AffichageJavaFX implements Affichage {
         private boolean isKingPresent(boolean white) {
             for (int i = 0; i < 8; i++) {
                 for (int j = 0; j < 8; j++) {
-                    Piece p = pieces[i][j];
+                    PiecePersonnalisee p = pieces[i][j];
                     if (p != null) {
-                        if ((p instanceof model.PiecePersonnalisee && ((model.PiecePersonnalisee)p).isKing() && p.isWhite() == white)
-                            || (p instanceof King && p.isWhite() == white)) {
+                        if (p instanceof model.PiecePersonnalisee && p.isWhite() == white) {
                             return true;
                         }
                     }
@@ -545,7 +512,7 @@ public class AffichageJavaFX implements Affichage {
         // Permet à la démo de déplacer une pièce automatiquement
         public void simulateMove(int fromRow, int fromCol, int toRow, int toCol) {
             if (gameEnded) return;
-            Piece movingPiece = pieces[fromRow][fromCol];
+            PiecePersonnalisee movingPiece = pieces[fromRow][fromCol];
             if (movingPiece != null && isValidMove(fromRow, fromCol, toRow, toCol)) {
                 pieces[toRow][toCol] = movingPiece;
                 pieces[fromRow][fromCol] = null;
@@ -565,14 +532,14 @@ public class AffichageJavaFX implements Affichage {
 
         // Pour la démo : surligne les coups possibles d'une pièce donnée
         public void highlightPossibleMovesDemo(int row, int col) {
-            Piece piece = pieces[row][col];
+            PiecePersonnalisee piece = pieces[row][col];
             if (piece != null) {
                 highlightPossibleMoves(piece, 60);
             }
         }
 
         // Getter pour accéder à une pièce à une position donnée (pour la démo)
-        public Piece getPieceAt(int row, int col) {
+        public model.PiecePersonnalisee getPieceAt(int row, int col) {
             return pieces[row][col];
         }
 
@@ -644,7 +611,7 @@ public class AffichageJavaFX implements Affichage {
         private model.PiecePersonnalisee reverseForBlack(model.PiecePersonnalisee p) {
             if (p.isWhite()) return p;
             int newRow = 7 - p.getRow();
-            return new model.PiecePersonnalisee(p.getName(), p.getUnicode(), p.getImagePath(), newRow, p.getCol(), false, p.getType(), p.isKing(), p.movePattern);
+            return new model.PiecePersonnalisee(p.getName(), p.getUnicode(), p.getImagePath(), newRow, p.getCol(), false, p.getType(), p.isKing(), p.getMovePattern());
         }
     }
 }

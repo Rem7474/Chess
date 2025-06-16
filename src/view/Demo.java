@@ -1,7 +1,7 @@
 package view;
 
 import javafx.application.Platform;
-import model.Piece;
+import model.PiecePersonnalisee;
 import model.Echiquier;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,11 +9,11 @@ import java.util.Random;
 
 public class Demo {
     private final AffichageJavaFX.JavaFXApp app;
-    private final Piece[][] pieces;
+    private final PiecePersonnalisee[][] pieces;
     private boolean running = false;
     private final Random random = new Random();
 
-    public Demo(AffichageJavaFX.JavaFXApp app, Echiquier echiquier, Piece[][] pieces) {
+    public Demo(AffichageJavaFX.JavaFXApp app, Echiquier echiquier, PiecePersonnalisee[][] pieces) {
         this.app = app;
         this.pieces = pieces;
     }
@@ -76,14 +76,12 @@ public class Demo {
         boolean whiteKing = false, blackKing = false;
         for (int i = 0; i < 8; i++) {
             for (int j = 0; j < 8; j++) {
-                Piece p = pieces[i][j];
+                PiecePersonnalisee p = pieces[i][j];
                 if (p != null) {
-                    if ((p instanceof model.PiecePersonnalisee && ((model.PiecePersonnalisee)p).isKing() && p.isWhite())
-                        || (p instanceof model.King && p.isWhite())) {
+                    if (p.isKing() && p.isWhite()) {
                         whiteKing = true;
                     }
-                    if ((p instanceof model.PiecePersonnalisee && ((model.PiecePersonnalisee)p).isKing() && !p.isWhite())
-                        || (p instanceof model.King && !p.isWhite())) {
+                    if (p.isKing() && !p.isWhite()) {
                         blackKing = true;
                     }
                 }
@@ -96,12 +94,11 @@ public class Demo {
         List<int[]> moves = new ArrayList<>();
         for (int i = 0; i < 8; i++) {
             for (int j = 0; j < 8; j++) {
-                Piece p = pieces[i][j];
+                PiecePersonnalisee p = pieces[i][j];
                 if (p != null && p.isWhite() == white) {
                     List<int[]> possible = p.calculatePossibleMoves(getBoardState());
                     for (int[] dest : possible) {
-                        // Vérifie que la destination est valide (pas une pièce alliée)
-                        Piece destPiece = pieces[dest[0]][dest[1]];
+                        PiecePersonnalisee destPiece = pieces[dest[0]][dest[1]];
                         if (destPiece == null || destPiece.isWhite() != white) {
                             moves.add(new int[]{i, j, dest[0], dest[1]});
                         }

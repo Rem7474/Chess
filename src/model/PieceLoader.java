@@ -68,8 +68,18 @@ public class PieceLoader {
         if (idx == -1) return pattern;
         int start = obj.indexOf('[', idx);
         int end = obj.indexOf(']', start);
-        String arr = obj.substring(start + 1, end);
-        String[] couples = arr.split("\\],\\s*\\[|\\], \\[");
+        // Recherche le bon crochet fermant pour le tableau complet
+        int bracketCount = 1;
+        int i = start + 1;
+        while (i < obj.length() && bracketCount > 0) {
+            if (obj.charAt(i) == '[') bracketCount++;
+            else if (obj.charAt(i) == ']') bracketCount--;
+            i++;
+        }
+        if (bracketCount != 0) return pattern;
+        String arr = obj.substring(start + 1, i - 1);
+        // Découpe chaque sous-pattern
+        String[] couples = arr.split("\\],\\s*\\[|\\], \\[" );
         for (String couple : couples) {
             String[] nums = couple.replace("[", "").replace("]", "").split(",");
             if (nums.length == 4) {
