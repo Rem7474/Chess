@@ -52,3 +52,18 @@ main/
 >     chcp 65001
 > 
 > Utilisez aussi une police compatible Unicode (Consolas, Cascadia Mono, Lucida Console…).
+### Démo automatique (mode console)
+
+Vous pouvez lancer une partie démo automatique (coups aléatoires, sans interaction) en mode console :
+
+1. Ouvrez `src/main/Main.java` et mettez `demoConsole = true` :
+   ```java
+   boolean demoConsole = true;
+   ```
+2. Compilez et lancez :
+   ```sh
+   javac -cp src -d bin src/model/*.java src/controller/*.java src/view/*.java && java -cp bin main.Main
+   ```
+3. Le plateau s'affichera à chaque coup, la partie s'arrête automatiquement quand un roi est capturé ou après 50 coups.
+
+> **Astuce** : Pour revenir au mode interactif, repassez `demoConsole` à `false` dans `Main.java`.

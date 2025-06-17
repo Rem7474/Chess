@@ -1,3 +1,14 @@
+/*
+ * Classe Demo
+ * --------------
+ * Cette classe permet de lancer une démonstration automatique d'une partie d'échecs avec des pièces personnalisées.
+ * Elle fonctionne initialement avec l'interface graphique JavaFX (AffichageJavaFX.JavaFXApp) : elle joue des coups aléatoires,
+ * surligne les déplacements, et affiche le message de fin de partie dans l'UI.
+ * 
+ * Adaptation : une méthode statique startDemoConsole permet désormais de lancer la même démo en mode console,
+ * en affichant le plateau à chaque coup via AffichageConsole, sans interface graphique.
+ */
+
 package view;
 
 import javafx.application.Platform;
@@ -119,6 +130,113 @@ public class Demo {
     }
 
     private List<int[]> getAllPossibleMoves(boolean white) {
+        List<int[]> moves = new ArrayList<>();
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                PiecePersonnalisee p = pieces[i][j];
+                if (p != null && p.isWhite() == white) {
+                    List<int[]> possible = p.calculatePossibleMoves(view.BoardUtils.getBoardState(pieces));
+                    for (int[] dest : possible) {
+                        PiecePersonnalisee destPiece = pieces[dest[0]][dest[1]];
+                        if (destPiece == null || destPiece.isWhite() != white) {
+                            moves.add(new int[]{i, j, dest[0], dest[1]});
+                        }
+                    }
+                }
+            }
+        }
+        return moves;
+    }
+
+    /**
+     * Lance une démo automatique en mode console (sans interface graphique).
+     * Les coups sont joués aléatoirement, le plateau est affiché à chaque tour.
+     */
+    public static void startDemoConsole(PiecePersonnalisee[][] pieces, int maxCoups) {
+        boolean running = true;
+        boolean whiteTurn = true;
+        int coups = 0;
+        while (running && coups < maxCoups) {
+            // Affiche le plateau courant
+            System.out.println("\nCoup " + (coups+1) + " - Joueur " + (whiteTurn ? "Blancs" : "Noirs"));
+            afficherPlateauConsole(pieces);
+            // Cherche tous les coups possibles
+            List<int[]> moves = getAllPossibleMovesConsole(pieces, whiteTurn);
+            if (moves.isEmpty()) {
+                System.out.println("Aucun coup possible pour ce joueur. Tour passé.");
+                whiteTurn = !whiteTurn;
+                coups++;
+                continue;
+            }
+            int[] move = moves.get(new Random().nextInt(moves.size()));
+            int fromRow = move[0], fromCol = move[1], toRow = move[2], toCol = move[3];
+            // Effectue le déplacement
+            PiecePersonnalisee p = pieces[fromRow][fromCol];
+            pieces[toRow][toCol] = p;
+            pieces[fromRow][fromCol] = null;
+            if (p != null) { p.setRow(toRow); p.setCol(toCol); }
+            System.out.println("Déplacement: " + p.getName() + " de " + (char)('A'+fromCol) + (fromRow+1) + " à " + (char)('A'+toCol) + (toRow+1));
+            // Vérifie la fin de partie
+            if (isGameOverConsole(pieces)) {
+                running = false;
+                System.out.println("Fin de partie! Vainqueur: " + getWinnerConsole(pieces));
+            }
+            whiteTurn = !whiteTurn;
+            coups++;
+        }
+    }
+
+    /**
+     * Affiche le plateau courant (mode console) à partir du tableau de pièces personnalisées.
+     */
+    private static void afficherPlateauConsole(PiecePersonnalisee[][] pieces) {
+        System.out.println("  A B C D E F G H");
+        for (int i = 7; i >= 0; i--) {
+            System.out.print((i+1) + "|");
+            for (int j = 0; j < 8; j++) {
+                PiecePersonnalisee p = pieces[i][j];
+                if (p == null) {
+                    System.out.print(" |");
+                } else {
+                    System.out.print((p.getUnicode() > 0 ? new String(Character.toChars(p.getUnicode())) : p.getName().charAt(0)) + "|");
+                }
+            }
+            System.out.println();
+        }
+    }
+
+    // Version console de la détection de fin de partie
+    private static boolean isGameOverConsole(PiecePersonnalisee[][] pieces) {
+        boolean whiteKing = false, blackKing = false;
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                PiecePersonnalisee p = pieces[i][j];
+                if (p != null && p.isKing()) {
+                    if (p.isWhite()) whiteKing = true;
+                    else blackKing = true;
+                }
+            }
+        }
+        return !(whiteKing && blackKing);
+    }
+    // Version console pour déterminer le gagnant
+    private static String getWinnerConsole(PiecePersonnalisee[][] pieces) {
+        boolean whiteKing = false, blackKing = false;
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                PiecePersonnalisee p = pieces[i][j];
+                if (p != null && p.isKing()) {
+                    if (p.isWhite()) whiteKing = true;
+                    else blackKing = true;
+                }
+            }
+        }
+        if (!whiteKing) return "Noirs";
+        if (!blackKing) return "Blancs";
+        return "Aucun";
+    }
+    // Version console pour générer les coups possibles
+    private static List<int[]> getAllPossibleMovesConsole(PiecePersonnalisee[][] pieces, boolean white) {
         List<int[]> moves = new ArrayList<>();
         for (int i = 0; i < 8; i++) {
             for (int j = 0; j < 8; j++) {
