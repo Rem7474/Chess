@@ -124,7 +124,7 @@ public class Demo {
             for (int j = 0; j < 8; j++) {
                 PiecePersonnalisee p = pieces[i][j];
                 if (p != null && p.isWhite() == white) {
-                    List<int[]> possible = p.calculatePossibleMoves(getBoardState());
+                    List<int[]> possible = p.calculatePossibleMoves(view.BoardUtils.getBoardState(pieces));
                     for (int[] dest : possible) {
                         PiecePersonnalisee destPiece = pieces[dest[0]][dest[1]];
                         if (destPiece == null || destPiece.isWhite() != white) {
@@ -135,19 +135,5 @@ public class Demo {
             }
         }
         return moves;
-    }
-
-    private int[][] getBoardState() {
-        int[][] board = new int[8][8];
-        for (int i = 0; i < 8; i++) {
-            for (int j = 0; j < 8; j++) {
-                if (pieces[i][j] != null) {
-                    board[i][j] = pieces[i][j].isWhite() ? 1 : -1;
-                } else {
-                    board[i][j] = 0;
-                }
-            }
-        }
-        return board;
     }
 }

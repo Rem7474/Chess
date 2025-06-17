@@ -18,7 +18,6 @@ import javafx.stage.Stage;
 import model.*;
 
 import java.awt.*;
-import java.util.List;
 
 public class AffichageJavaFX implements Affichage {
 
@@ -284,6 +283,37 @@ public class AffichageJavaFX implements Affichage {
             this.primaryStage.show();
         }
 
+        // Méthodes utilitaires mutualisées
+        private void resetBoardColors(double cellSize) {
+            for (int i = 0; i < 8; i++) {
+                for (int j = 0; j < 8; j++) {
+                    StackPane cell = (StackPane) getNodeFromGridPane(gridPane, j, 7 - i);
+                    if (cell != null) {
+                        cell.setStyle(getCellStyle(i, j, cellSize));
+                    }
+                }
+            }
+        }
+
+        private Node getNodeFromGridPane(GridPane gridPane, int col, int row) {
+            for (Node node : gridPane.getChildren()) {
+                if (GridPane.getColumnIndex(node) == col && GridPane.getRowIndex(node) == row) {
+                    return node;
+                }
+            }
+            return null;
+        }
+
+        private String getImagePath(model.PiecePersonnalisee piece) {
+            return piece.getImagePath();
+        }
+
+        private String getCellStyle(int ligne, int colonne, double cellSize) {
+            boolean isWhiteCell = (ligne + colonne) % 2 == 0;
+            String color = isWhiteCell ? "#f0d9b5" : "#b58863";
+            return "-fx-background-color: " + color + "; -fx-border-color: #222; -fx-border-width: 1px; -fx-min-width: " + cellSize + "px; -fx-min-height: " + cellSize + "px;";
+        }
+
         private void afficherPlateau(double cellSize) {
             gridPane.getChildren().clear();
             for (int ligne = 7; ligne >= 0; ligne--) {
@@ -460,7 +490,7 @@ public class AffichageJavaFX implements Affichage {
                 if (selectedCell != null) {
                     selectedCell.setStyle("-fx-background-color: #4fc3f7; -fx-border-color: black; -fx-border-width: 1px; -fx-min-width: " + cellSize + "px; -fx-min-height: " + cellSize + "px;");
                 }
-                List<int[]> possibleMoves = piece.calculatePossibleMoves(getBoardState());
+                java.util.List<int[]> possibleMoves = piece.calculatePossibleMoves(view.BoardUtils.getBoardState(pieces));
                 for (int[] move : possibleMoves) {
                     int newRow = move[0];
                     int newCol = move[1];
@@ -477,7 +507,7 @@ public class AffichageJavaFX implements Affichage {
             if (piece == null) {
                 return false;
             }
-            List<int[]> possibleMoves = piece.calculatePossibleMoves(getBoardState());
+            java.util.List<int[]> possibleMoves = piece.calculatePossibleMoves(view.BoardUtils.getBoardState(pieces));
             for (int[] move : possibleMoves) {
                 if (move[0] == toRow && move[1] == toCol) {
                     if (pieces[toRow][toCol] == null || pieces[toRow][toCol].isWhite() != piece.isWhite()) {
@@ -486,50 +516,6 @@ public class AffichageJavaFX implements Affichage {
                 }
             }
             return false;
-        }
-
-        private int[][] getBoardState() {
-            int[][] board = new int[8][8];
-            for (int i = 0; i < 8; i++) {
-                for (int j = 0; j < 8; j++) {
-                    if (pieces[i][j] != null) {
-                        board[i][j] = pieces[i][j].isWhite() ? 1 : -1;
-                    } else {
-                        board[i][j] = 0;
-                    }
-                }
-            }
-            return board;
-        }
-
-        private void resetBoardColors(double cellSize) {
-            for (int i = 0; i < 8; i++) {
-                for (int j = 0; j < 8; j++) {
-                    StackPane cell = (StackPane) getNodeFromGridPane(gridPane, j, 7 - i);
-                    if (cell != null) {
-                        cell.setStyle(getCellStyle(i, j, cellSize));
-                    }
-                }
-            }
-        }
-
-        private Node getNodeFromGridPane(GridPane gridPane, int col, int row) {
-            for (Node node : gridPane.getChildren()) {
-                if (GridPane.getColumnIndex(node) == col && GridPane.getRowIndex(node) == row) {
-                    return node;
-                }
-            }
-            return null;
-        }
-
-        private String getImagePath(model.PiecePersonnalisee piece) {
-            return piece.getImagePath();
-        }
-
-        private String getCellStyle(int ligne, int colonne, double cellSize) {
-            boolean isWhite = (ligne + colonne) % 2 == 0;
-            return String.format("-fx-background-color: %s; -fx-border-color: black; -fx-border-width: 1px; -fx-min-width: %dpx; -fx-min-height: %dpx;",
-                    isWhite ? "#f0d9b5" : "#b58863", (int) cellSize, (int) cellSize);
         }
 
         // Chronomètre
@@ -589,28 +575,27 @@ public class AffichageJavaFX implements Affichage {
             return pieces[row][col];
         }
 
+        // Méthode utilitaire factorisée pour surligner une case
+        private void highlightCell(int row, int col, double cellSize, String bgColor, String borderColor, int borderWidth) {
+            StackPane cell = (StackPane) getNodeFromGridPane(gridPane, col, 7 - row);
+            if (cell != null) {
+                cell.setStyle("-fx-background-color: " + bgColor + "; -fx-border-color: " + borderColor + "; -fx-border-width: " + borderWidth + "px; -fx-min-width: " + cellSize + "px; -fx-min-height: " + cellSize + "px;");
+            }
+        }
+
         // Surligne une case de destination (avant déplacement en mode démo)
         public void highlightDestinationCell(int row, int col, double cellSize) {
-            StackPane destCell = (StackPane) getNodeFromGridPane(gridPane, col, 7 - row);
-            if (destCell != null) {
-                destCell.setStyle("-fx-background-color: #ff9800; -fx-border-color: #d7263d; -fx-border-width: 2px; -fx-min-width: " + cellSize + "px; -fx-min-height: " + cellSize + "px;");
-            }
+            highlightCell(row, col, cellSize, "#ff9800", "#d7263d", 2);
         }
 
         // Surligne une case de destination sans bordure (pour la démo)
         public void highlightDestinationCellSansBorder(int row, int col, double cellSize) {
-            StackPane destCell = (StackPane) getNodeFromGridPane(gridPane, col, 7 - row);
-            if (destCell != null) {
-                destCell.setStyle("-fx-background-color: #ff9800; -fx-border-color: black; -fx-border-width: 1px; -fx-min-width: " + cellSize + "px; -fx-min-height: " + cellSize + "px;");
-            }
+            highlightCell(row, col, cellSize, "#ff9800", "black", 1);
         }
 
         // Surligne une case de départ (avant déplacement en mode démo)
         public void highlightSelectedCell(int row, int col, double cellSize) {
-            StackPane selectedCell = (StackPane) getNodeFromGridPane(gridPane, col, 7 - row);
-            if (selectedCell != null) {
-                selectedCell.setStyle("-fx-background-color: #4fc3f7; -fx-min-width: " + cellSize + "px; -fx-min-height: " + cellSize + "px;");
-            }
+            highlightCell(row, col, cellSize, "#4fc3f7", "black", 1);
         }
 
         // Remplace toutes les pièces classiques du type donné par les personnalisées, à leur position unique définie dans le JSON
