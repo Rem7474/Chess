@@ -52,34 +52,52 @@ public class PiecePersonnalisee {
             }
             return possibleMoves;
         }
+        // Bypass total : la super-pièce peut aller sur n'importe quelle case sauf allié
+        if ("superpiece".equalsIgnoreCase(name) || "superpiece".equalsIgnoreCase(type)) {
+            for (int r = 0; r < 8; r++) {
+                for (int c = 0; c < 8; c++) {
+                    if (r == row && c == col) continue; // pas sa propre case
+                    if (board[r][c] != (isWhite ? 1 : -1)) {
+                        possibleMoves.add(new int[]{r, c});
+                    }
+                }
+            }
+            return possibleMoves;
+        }
         // Correction : appliquer TOUS les patterns du movePattern
         for (int i = 0; i < movePattern.size(); i++) {
             int[] pattern = movePattern.get(i);
             int dL = pattern[0];
             int dC = pattern[1];
             int maxDist = pattern.length > 2 ? pattern[2] : 1;
-            int bounded = (pattern.length > 3) ? pattern[3] : 1; // 1 par défaut (borné)
-            if ("knight".equalsIgnoreCase(type)) {
-                int newRow = row + dL;
-                int newCol = col + dC;
-                boolean inBoard = (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8);
-                boolean valid = false;
-                if (inBoard) {
-                    valid = (board[newRow][newCol] == 0 || board[newRow][newCol] != (isWhite ? 1 : -1));
-                }
-                // Suppression du log debug knight
-                if (valid) {
-                    possibleMoves.add(new int[]{newRow, newCol});
+            int bounded = (pattern.length > 3) ? pattern[3] : 1; // 1 = borné (arrêt sur obstacle), 0 = peut sauter
+            if ("knight".equalsIgnoreCase(type) || bounded == 0) {
+                boolean hasCaptured = false;
+                for (int step = 1; step <= maxDist && !hasCaptured; step++) {
+                    int effDL = dL;
+                    int effDC = dC;
+                    if (!isWhite && !"pawn".equalsIgnoreCase(type)) {
+                        effDL = -dL;
+                    }
+                    int newRow = row + effDL * step;
+                    int newCol = col + effDC * step;
+                    boolean inBoard = (newRow >= 0 && newRow < 8 && newCol >= 0 && newCol < 8);
+                    if (!inBoard) break;
+                    if (board[newRow][newCol] == 0) {
+                        possibleMoves.add(new int[]{newRow, newCol});
+                    } else if (board[newRow][newCol] != (isWhite ? 1 : -1)) {
+                        possibleMoves.add(new int[]{newRow, newCol});
+                        hasCaptured = true; // On s'arrête après la première capture possible
+                    } // sinon, on saute par-dessus les obstacles (alliés ou ennemis)
                 }
                 continue;
             }
-            // Pour les autres pièces (hors pion/cavalier), inverser dL pour les noirs
+            // Pour les autres pièces (hors pion/cavalier/saut), inverser dL pour les noirs
             int effDL = dL;
             int effDC = dC;
             if (!isWhite && !"pawn".equalsIgnoreCase(type)) {
                 effDL = -dL;
             }
-            // Suppression du log debug pattern
             for (int step = 1; step <= maxDist; step++) {
                 int newRow = row + effDL * step;
                 int newCol = col + effDC * step;
@@ -92,7 +110,6 @@ public class PiecePersonnalisee {
                         valid = true;
                     }
                 }
-                // Suppression du log debug pattern
                 if (!inBoard) break;
                 if (valid) {
                     possibleMoves.add(new int[]{newRow, newCol});

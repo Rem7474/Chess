@@ -229,7 +229,7 @@ public class AffichageJavaFX implements Affichage {
                 java.util.Map<String, String> nomsPerso = new java.util.HashMap<>();
                 for (model.PiecePersonnalisee p : persos) {
                     // Ignore les entrées sans type ou avec type null (ex : doc JSON)
-                    if (p.getType() == null) continue;
+                    if (p.getType() == null || p.getType().isBlank()) continue;
                     if (!p.getType().equalsIgnoreCase("rook") && !p.getType().equalsIgnoreCase("knight") && !p.getType().equalsIgnoreCase("bishop") && !p.getType().equalsIgnoreCase("queen") && !p.getType().equalsIgnoreCase("king") && !p.getType().equalsIgnoreCase("pawn")) {
                         typesPerso.add(p.getType());
                         nomsPerso.put(p.getType(), p.getName());
@@ -631,7 +631,7 @@ public class AffichageJavaFX implements Affichage {
                         // Crée la version noire de la pièce personnalisée
                         model.PiecePersonnalisee pNoir = new model.PiecePersonnalisee(
                             p.getName(),
-                            p.getUnicode() + 6, // Décalage unicode pour noirs si possible, sinon garder le même
+                            p.getUnicode(), // Même unicode pour blanc et noir
                             p.getImagePath(),
                             rowNoir,
                             colNoir,

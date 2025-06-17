@@ -46,41 +46,9 @@ main/
    ```
 2. Suivre les instructions dans le terminal.
 
-## Choisir le mode d’interface (graphique ou console)
-
-Le choix du mode d’interface se fait dans le fichier `src/main/Main.java` :
-
-```java
-boolean useJavaFX = false; // false = console, true = interface graphique
-```
-
-- Si `useJavaFX` est à `true`, l’interface JavaFX s’affiche.
-- Si `useJavaFX` est à `false`, le mode console s’affiche.
-
-Modifiez cette variable puis compilez et lancez :
-```sh
-javac -cp src -d bin src/model/*.java src/controller/*.java src/view/*.java && java -cp bin main.Main
-```
-
-Il n’y a pas de bouton ou d’option dans l’interface pour basculer dynamiquement.
-
-## Personnalisation des pièces
-
-- Modifier `src/pieces.json` pour ajouter, retirer ou modifier des pièces classiques ou personnalisées.
-- Chaque pièce personnalisée doit avoir :
-  - `name`, `unicode`, `imagePath`, `isWhite`, `startRow`, `startCol`, `type`, `isKing`, `movePattern`.
-- Les pièces personnalisées sont activables/désactivables dynamiquement dans l’UI.
-
-## Dépendances
-
-- Java 11+
-- JavaFX (modules requis : javafx.base, javafx.controls, javafx.graphics)
-
-## Auteurs
-
-- Projet pédagogique IN361 – Esisar
-- Développement : @Rem7474
-
-## Licence
-
-Projet académique – Usage pédagogique uniquement.
+> **Astuce Windows** :
+> Pour afficher correctement les pièces d’échecs dans le terminal, tapez la commande suivante avant de lancer le programme :
+> 
+>     chcp 65001
+> 
+> Utilisez aussi une police compatible Unicode (Consolas, Cascadia Mono, Lucida Console…).
