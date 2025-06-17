@@ -297,20 +297,27 @@ public class AffichageJavaFX implements Affichage {
                     final int currentRow = ligne;
                     final int currentCol = colonne;
                     if (piece != null) {
-                        String type = piece.getType().toLowerCase();
-                        if (!type.equals("rook") && !type.equals("knight") && !type.equals("bishop") && !type.equals("queen") && !type.equals("king") && !type.equals("pawn")) {
+                        String imagePath = getImagePath(piece);
+                        boolean imageAffichee = false;
+                        if (imagePath != null && !imagePath.isEmpty()) {
+                            try {
+                                java.io.InputStream imgStream = getClass().getResourceAsStream("/images/" + imagePath);
+                                Image image = new Image(imgStream);
+                                if (image != null && image.getWidth() > 0) {
+                                    ImageView imageView = new ImageView(image);
+                                    imageView.setFitWidth(cellSize);
+                                    imageView.setFitHeight(cellSize);
+                                    cell.getChildren().add(imageView);
+                                    imageAffichee = true;
+                                }
+                            } catch (Exception e) {
+                                // ignore, fallback unicode
+                            }
+                        }
+                        if (!imageAffichee) {
                             Label emoji = new Label(new String(Character.toChars(piece.getUnicode())));
                             emoji.setStyle("-fx-font-size: 38px; -fx-font-weight: bold;");
                             cell.getChildren().add(emoji);
-                        } else {
-                            String imagePath = getImagePath(piece);
-                            Image image = new Image(getClass().getResourceAsStream("/images/" + imagePath));
-                            if (image != null) {
-                                ImageView imageView = new ImageView(image);
-                                imageView.setFitWidth(cellSize);
-                                imageView.setFitHeight(cellSize);
-                                cell.getChildren().add(imageView);
-                            }
                         }
                         cell.setOnMouseClicked(event -> {
                             if (!gameEnded) {
