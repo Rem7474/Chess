@@ -1,1 +1,0 @@
-Suppression des fichiers de pièces classiques (Bishop.java, Rook.java, Queen.java, King.java, Knight.java, Pawn.java, Piece.java) car l'import se fait désormais uniquement via pieces.json et PiecePersonnalisee.java.
