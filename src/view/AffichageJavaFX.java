@@ -268,21 +268,20 @@ public class AffichageJavaFX implements Affichage {
             rootStack.getChildren().addAll(root, endGameLabel);
 
             Scene scene = new Scene(rootStack, 700, 800);
-            primaryStage.setScene(scene);
-            primaryStage.setTitle("Jeu d'échecs");
+            this.primaryStage.setScene(scene);
+            this.primaryStage.setTitle("Jeu d'échecs");
 
             // Limite la hauteur de la fenêtre à la hauteur de l'écran moins une marge (ex: 100px)
             Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
             double maxHeight = screenSize.getHeight() - 100; // 100px de marge pour la barre Windows
 
             if (800 > maxHeight) {
-                primaryStage.setHeight(maxHeight);
+                this.primaryStage.setHeight(maxHeight);
             } else {
-                primaryStage.setHeight(800);
+                this.primaryStage.setHeight(800);
             }
-            primaryStage.setMinHeight(600); // Optionnel : hauteur minimale
-
-            primaryStage.show();
+            this.primaryStage.setMinHeight(600); // Optionnel : hauteur minimale
+            this.primaryStage.show();
         }
 
         private void afficherPlateau(double cellSize) {
