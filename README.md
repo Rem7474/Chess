@@ -79,7 +79,7 @@ Il n’y a pas de bouton ou d’option dans l’interface pour basculer dynamiqu
 ## Auteurs
 
 - Projet pédagogique IN361 – Esisar
-- Développement : [Votre nom ici]
+- Développement : @Rem7474
 
 ## Licence
 
