@@ -67,7 +67,6 @@ public class PieceLoader {
         int idx = obj.indexOf("\"movePattern\":");
         if (idx == -1) return pattern;
         int start = obj.indexOf('[', idx);
-        int end = obj.indexOf(']', start);
         // Recherche le bon crochet fermant pour le tableau complet
         int bracketCount = 1;
         int i = start + 1;

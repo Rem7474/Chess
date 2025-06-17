@@ -81,9 +81,7 @@ public class AffichageJavaFX implements Affichage {
         private boolean gameEnded = false;
         private long chronoStart = 0;
         private javafx.animation.Timeline chronoTimeline;
-        private Button goButton;
         private Button demoButton;
-        private boolean gameStarted = false;
         private boolean chronoStarted = false;
         private Demo demoInstance = null;
         private boolean demoPaused = false;
@@ -140,9 +138,9 @@ public class AffichageJavaFX implements Affichage {
                 "-fx-background-radius: 8;" +
                 "-fx-cursor: hand;"
             );
-            reloadButton.setOnMouseEntered(ev -> reloadButton.setStyle(reloadButton.getStyle() + "-fx-cursor: hand;"));
-            reloadButton.setOnMouseExited(ev -> reloadButton.setStyle(reloadButton.getStyle().replace("-fx-cursor: hand;", "")));
-            reloadButton.setOnAction(ev -> {
+            reloadButton.setOnMouseEntered(_ -> reloadButton.setStyle(reloadButton.getStyle() + "-fx-cursor: hand;"));
+            reloadButton.setOnMouseExited(_ -> reloadButton.setStyle(reloadButton.getStyle().replace("-fx-cursor: hand;", "")));
+            reloadButton.setOnAction(_ -> {
                 // 1. Stopper la démo AVANT toute réinitialisation
                 if (demoInstance != null && demoInstance.isRunning()) {
                     demoInstance.setRunning(false);
@@ -187,7 +185,7 @@ public class AffichageJavaFX implements Affichage {
                 "-fx-background-radius: 8;" +
                 "-fx-cursor: hand;"
             );
-            demoButton.setOnAction(ev -> {
+            demoButton.setOnAction(_ -> {
                 if (demoInstance == null || !demoInstance.isRunning()) {
                     demoInstance = new Demo(this, echiquier, pieces); // Toujours recréer une instance propre
                     demoInstance.setRunning(true);
@@ -244,7 +242,7 @@ public class AffichageJavaFX implements Affichage {
                     javafx.scene.control.CheckBox check = new javafx.scene.control.CheckBox();
                     check.setStyle("-fx-scale-x:1.3;-fx-scale-y:1.3;");
                     check.setSelected(false);
-                    check.selectedProperty().addListener((obs, oldVal, newVal) -> {
+                    check.selectedProperty().addListener((_, _, newVal) -> {
                         if (newVal) {
                             remplacerTypeSurPlateau(type);
                         } else {
@@ -319,7 +317,7 @@ public class AffichageJavaFX implements Affichage {
                             emoji.setStyle("-fx-font-size: 38px; -fx-font-weight: bold;");
                             cell.getChildren().add(emoji);
                         }
-                        cell.setOnMouseClicked(event -> {
+                        cell.setOnMouseClicked(_ -> {
                             if (!gameEnded) {
                                 if (pieces[currentRow][currentCol] != null && ((isWhiteTurn && pieces[currentRow][currentCol].isWhite()) || (!isWhiteTurn && !pieces[currentRow][currentCol].isWhite()))) {
                                     handlePieceClick(currentRow, currentCol, cellSize);
@@ -329,7 +327,7 @@ public class AffichageJavaFX implements Affichage {
                             }
                         });
                     } else {
-                        cell.setOnMouseClicked(event -> {
+                        cell.setOnMouseClicked(_ -> {
                             if (!gameEnded) {
                                 handleEmptyCellClick(currentRow, currentCol, cellSize);
                             }
@@ -361,7 +359,6 @@ public class AffichageJavaFX implements Affichage {
             boolean moved = false;
             if (selectedPieceRow != -1) {
                 PiecePersonnalisee movingPiece = pieces[selectedPieceRow][selectedPieceCol];
-                PiecePersonnalisee targetPiece = pieces[row][col];
                 if (isValidMove(selectedPieceRow, selectedPieceCol, row, col)) {
                     pieces[selectedPieceRow][selectedPieceCol] = null;
                     pieces[row][col] = movingPiece;
@@ -402,13 +399,28 @@ public class AffichageJavaFX implements Affichage {
             if (moved || !gameEnded) checkEndGame();
         }
 
+        // Synchronise le modèle echiquier avec le tableau d'affichage pieces
+        private void syncEchiquierWithPieces() {
+            int[][] plateau = echiquier.getPlateau();
+            for (int i = 0; i < 8; i++) {
+                for (int j = 0; j < 8; j++) {
+                    if (pieces[i][j] != null) {
+                        plateau[i][j] = pieces[i][j].getUnicode();
+                    } else {
+                        plateau[i][j] = 0;
+                    }
+                }
+            }
+        }
+
         private void checkEndGame() {
-            if (!isKingPresent(true)) {
+            syncEchiquierWithPieces();
+            String winner = echiquier.getWinner();
+            if ("black".equals(winner)) {
                 showEndGame("Victoire des noirs !");
-            } else if (!isKingPresent(false)) {
+            } else if ("white".equals(winner)) {
                 showEndGame("Victoire des blancs !");
             } else {
-                // S'assurer que le label est vide si la partie continue
                 endGameLabel.setText("");
             }
         }
@@ -521,27 +533,13 @@ public class AffichageJavaFX implements Affichage {
                     isWhite ? "#f0d9b5" : "#b58863", (int) cellSize, (int) cellSize);
         }
 
-        private boolean isKingPresent(boolean white) {
-            for (int i = 0; i < 8; i++) {
-                for (int j = 0; j < 8; j++) {
-                    PiecePersonnalisee p = pieces[i][j];
-                    if (p != null) {
-                        if (p instanceof model.PiecePersonnalisee && p.isWhite() == white) {
-                            return true;
-                        }
-                    }
-                }
-            }
-            return false;
-        }
-
         // Chronomètre
         private void startChrono() {
             chronoStart = System.currentTimeMillis();
             chronoLabel.setText("Chrono : 00:00");
             if (chronoTimeline != null) chronoTimeline.stop();
             chronoTimeline = new javafx.animation.Timeline(
-                new javafx.animation.KeyFrame(javafx.util.Duration.seconds(1), e -> updateChrono())
+                new javafx.animation.KeyFrame(javafx.util.Duration.seconds(1), _ -> updateChrono())
             );
             chronoTimeline.setCycleCount(javafx.animation.Animation.INDEFINITE);
             chronoTimeline.play();
@@ -670,13 +668,6 @@ public class AffichageJavaFX implements Affichage {
                     }
                 }
             }
-        }
-
-        // Fonction utilitaire pour inverser la position d'une pièce personnalisée pour les noirs (ligne 0/1 -> 7/6)
-        private model.PiecePersonnalisee reverseForBlack(model.PiecePersonnalisee p) {
-            if (p.isWhite()) return p;
-            int newRow = 7 - p.getRow();
-            return new model.PiecePersonnalisee(p.getName(), p.getUnicode(), p.getImagePath(), newRow, p.getCol(), false, p.getType(), p.isKing(), p.getMovePattern());
         }
 
         public void switchPlayer() {

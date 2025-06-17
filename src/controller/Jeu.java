@@ -64,7 +64,6 @@ public class Jeu {
                 continue;
             }
             // Effectuer le mouvement
-            int pieceCapturee = echiquier.getEmplacement(arrivee[0], arrivee[1]);
             echiquier.setEmplacement(arrivee[0], arrivee[1], piece);
             echiquier.setEmplacement(depart[0], depart[1], 0);
             affichage.afficher(echiquier);
